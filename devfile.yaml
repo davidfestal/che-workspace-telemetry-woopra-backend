@@ -34,7 +34,7 @@ components:
       - value: '--max_old_space_size=4608'
         name: NODE_OPTIONS
       - value: '4167'
-        name: WORKSPACE_TELEMETRY_BACKEND_PORT
+        name: CHE_WORKSPACE_TELEMETRY_BACKEND_PORT
   - mountSources: true
     endpoints:
       - name: 8080/tcp
@@ -62,7 +62,7 @@ components:
       - value: test.openshift.io
         name: CHE_FABRIC8_ANALYTICS_WOOPRA_DOMAIN
       - value: '4167'
-        name: WORKSPACE_TELEMETRY_BACKEND_PORT
+        name: CHE_WORKSPACE_TELEMETRY_BACKEND_PORT
   - id: eclipse/che-machine-exec-plugin/latest
     type: chePlugin
   - id: che-incubator/typescript/latest
@@ -76,34 +76,34 @@ commands:
       - workdir: /projects/theia
         type: exec
         command: >-
-          sed -i -e 's:"examples/\*":"examples/*", "che-theia/plugins/*":'
-          package.json && che:theia init -c che-theia/che-theia-init-sources.yml
-          --alias https://github.com/eclipse/che-theia=./che-theia
+          sed -i -e 's:"examples/\*":"examples/*",
+          "che-theia/plugins/telemetry-plugin":' package.json && che:theia init
+          -c che-theia/che-theia-init-sources.yml --alias
+          https://github.com/eclipse/che-theia=./che-theia
         component: theia-dev
   - name: BUILD theia
     actions:
       - workdir: /projects/theia
         type: exec
-        command: |-
-          killall node;
-          yarn &&
+        command: >-
+          yarn add -D @theia/plugin-packager --ignore-workspace-root-check &&
           echo -e "\e[32mDone.\e[0m build ... che-theia"
         component: theia-dev
   - name: BUILD telemetry plugin
     actions:
       - workdir: /projects/theia
         type: exec
-        command: >
-          killall node; npx run build @eclipse-che/telemetry-plugin && echo -e
+        command: >-
+          npx run build @eclipse-che/telemetry-plugin && echo -e
           "\e[32mDone.\e[0m build ... telemetry plugin"
         component: theia-dev
   - name: BUILD backend-base
     actions:
       - workdir: /projects/che-workspace-telemetry-client
         type: exec
-        command: |-
-          mvn clean install -pl backend-base &&
-          echo -e "\e[32mDone.\e[0m build ... backend-base"
+        command: >-
+          mvn clean install -pl backend-base &&  echo -e "\e[32mDone.\e[0m build
+          ... backend-base"
         component: maven
   - name: COMPILE_RUN woopra-backend
     actions:
@@ -111,15 +111,16 @@ commands:
         type: exec
         command: >-
           mvn compile quarkus:dev
-          -Dquarkus.http.port="${WORKSPACE_TELEMETRY_BACKEND_PORT}"
+          -Dquarkus.http.port="${CHE_WORKSPACE_TELEMETRY_BACKEND_PORT}"
         component: maven
   - name: run ... DEV yarn start ... che-theia + telemetry-plugin
     actions:
       - workdir: /projects/theia/examples/assembly
         type: exec
-        command: >
+        command: >-
           killall node; mkdir -p /tmp/theiadev_projects && export
           CHE_PROJECTS_ROOT=/tmp/theiadev_projects && export
           HOSTED_PLUGIN=/projects/theia/che-theia/plugins/telemetry-plugin/ &&
-          yarn start /tmp/theiadev_projects --hostname=0.0.0.0 --port=3010
+          echo "Used port = ${CHE_WORKSPACE_TELEMETRY_BACKEND_PORT}" && yarn
+          start /tmp/theiadev_projects --hostname=0.0.0.0 --port=3010
         component: theia-dev
